@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Document Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>Document Assistant</h1>
+    
+    <div class="container">
+        <h2>Upload Document</h2>
+        <form id="uploadForm">
+            <input type="file" id="file" accept=".txt,.pdf,.docx,.xlsx">
+            <button type="submit">Upload</button>
+        </form>
+        <div id="uploadStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>Ask a Question</h2>
+        <div class="query-container">
+            <input type="text" id="query" name="query" placeholder="Enter your question">
+            <!-- suggestions-container will be inserted here by JavaScript -->
+        </div>
+        <button onclick="askQuestion()">Ask</button>
+        <div id="response" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>Document Management</h2>
+        <button onclick="listDocuments()">View Documents</button>
+        <button onclick="deleteEmbeddings()" class="danger">Reset Embeddings</button>
+        <div id="documentList" class="document-list"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            const file = document.getElementById('file').files[0];
+            const status = document.getElementById('uploadStatus');
+            
+            if (!file) {
+                status.textContent = 'Please select a file';
+                return;
+            }
+            
+            formData.append('file', file);
+            status.textContent = 'Uploading...';
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                status.textContent = result.success || result.error;
+            } catch (error) {
+                status.textContent = 'Error uploading file';
+                console.error('Error:', error);
+            }
+        };
+
+        async function askQuestion() {
+            const query = document.getElementById('query').value;
+            const response = document.getElementById('response');
+            
+            if (!query.trim()) {
+                response.innerHTML = '<div class="error">Please enter a question</div>';
+                return;
+            }
+            
+            response.innerHTML = '<div class="loading">Processing query...</div>';
+            
+            try {
+                const result = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                const data = await result.json();
+                
+                if (!result.ok) {
+                    throw new Error(data.error || 'Failed to process query');
+                }
+                
+                response.innerHTML = `<div class="answer">${data.answer}</div>`;
+            } catch (error) {
+                response.innerHTML = `<div class="error">${error.message}</div>`;
+                console.error('Query error:', error);
+            }
+        }
+
+        async function listDocuments() {
+            const docList = document.getElementById('documentList');
+            try {
+                const response = await fetch('/documents');
+                const data = await response.json();
+                if (data.documents.length > 0) {
+                    const html = data.documents.map(doc => `
+                        <div class="document-item">
+                            <span>${doc.name}</span>
+                            <span>${(doc.size/1024).toFixed(2)} KB</span>
+                            <span>${doc.date}</span>
+                        </div>
+                    `).join('');
+                    docList.innerHTML = html;
+                } else {
+                    docList.innerHTML = '<p>No documents uploaded</p>';
+                }
+            } catch (error) {
+                docList.innerHTML = '<p class="error">Error loading documents</p>';
+            }
+        }
+
+        async function deleteEmbeddings() {
+            if (confirm('Are you sure you want to reset all embeddings?')) {
+                try {
+                    const response = await fetch('/embeddings', { method: 'DELETE' });
+                    const data = await response.json();
+                    alert(data.message || data.error);
+                } catch (error) {
+                    alert('Error resetting embeddings');
+                }
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
