@@ -6,7 +6,7 @@ class Config:
     ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx', 'xlsx'}
     
     # API Configuration
-    OPENAI_API_KEY = "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"
+    OPENAI_API_KEY = "your-api-key"
     
     # Template Configuration
     SYSTEM_TEMPLATE = """You are a helpful AI assistant named RAMEEN that answers questions based on the following context:
